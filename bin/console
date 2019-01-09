@@ -10,5 +10,23 @@ require "unifi/client"
 # require "pry"
 # Pry.start
 
-require "irb"
-IRB.start(__FILE__)
+# require "irb"
+# IRB.start(__FILE__)
+require 'pry'
+
+def vclient
+  Unifi::Client.new(type: :video)
+end
+
+def client
+  Unifi::Client.new
+end
+
+def reload
+  load File.expand_path('../lib/unifi/camera.rb',  File.dirname(__FILE__))
+  load File.expand_path('../lib/unifi/client.rb',  File.dirname(__FILE__))
+  load File.expand_path('../lib/unifi/clients.rb', File.dirname(__FILE__))
+  load File.expand_path('../lib/unifi/events.rb',  File.dirname(__FILE__))
+end
+
+Pry.start(__FILE__)

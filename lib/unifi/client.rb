@@ -19,12 +19,30 @@ module Unifi
 
     def get(path, raw: false)
       login if @cookie.nil?
-      path = prefix_path(path)
-      uri = URI("#@host#{path}")
+      uri = uri_for(path)
       http(uri, Net::HTTP::Get.new(uri), raw: raw)
     end
 
-    def login
+    def post(path, body:, raw: false)
+      login if @cookie.nil?
+      uri = uri_for(path)
+      request = Net::HTTP::Post.new(uri)
+      request.body = body
+      http(uri, request, raw: raw)
+    end
+
+    def put(path, body:, raw: false)
+      login if @cookie.nil?
+      uri = uri_for(path)
+      request = Net::HTTP::Put.new(uri)
+      request.body = body
+      http(uri, request, raw: raw)
+    end
+
+    def login(force: false)
+      @cookie = nil if force
+      return @cookie if @cookie
+
       path = type == :controller ? "/api/login" : "/api/2.0/login"
       uri = URI("#@host#{path}")
       req = Net::HTTP::Post.new(uri)
@@ -40,12 +58,18 @@ module Unifi
         http.request(req)
       end
 
+      # binding.pry
+
       cookie = case resp
       when Net::HTTPOK
         return (@cookie = req['Cookie']) if type == :video
         resp['Set-Cookie'].split('; ').find {|c| c[0..7] == 'unifises' || c[0..7] == 'JSESSION'}
       end
       @cookie = cookie
+    end
+
+    def uri_for(path)
+      URI("#@host#{prefix_path(path)}")
     end
 
     private
@@ -56,6 +80,8 @@ module Unifi
           yield
         else
           req['Cookie'] = @cookie
+          req['Content-Type'] ||= 'application/json'
+          req['Accept'] = 'application/json' if req['Accept'] == '*/*'
           http.request(req)
         end
       end
@@ -64,7 +90,11 @@ module Unifi
       return resp if raw
       case resp
       when Net::HTTPOK
-        JSON.parse(resp.body)
+        if resp['Content-Type']&.include?('application/json')
+          JSON.parse(resp.body)
+        else
+          resp.body
+        end
       else
         resp
       end
@@ -72,7 +102,8 @@ module Unifi
 
     def get_login_cookie
       uri = URI("#@host/")
-      resp = http(uri, Net::HTTP::Get.new(uri), raw: true)
+      req = Net::HTTP::Get.new(uri).tap {|r| r['Accept'] = 'text/html'}
+      resp = http(uri, req, raw: true)
       resp['Set-Cookie'].split('; ').find {|c| c[0..7] == 'JSESSION'}
     end
 
@@ -82,9 +113,13 @@ module Unifi
     end
 
     def prefix_path(path)
-      path = "/#{path}" unless path[0] = "/"
+      path = "/#{path}" unless path[0] == "/"
       path = path.gsub(":domain", @domain)
       path
     end
   end
 end
+
+require 'unifi/camera'
+require 'unifi/clients'
+require 'unifi/events'

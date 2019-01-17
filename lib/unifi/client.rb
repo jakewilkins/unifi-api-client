@@ -54,7 +54,7 @@ module Unifi
         req['User-Agent'] = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/71.0.3578.98 Safari/537.36'
       end
 
-      resp = Net::HTTP.start(uri.host, uri.port, use_ssl: true, verify_mode: OpenSSL::SSL::VERIFY_NONE) do |http|
+      resp = Net::HTTP.start(uri.host, uri.port, http_start_opts) do |http|
         http.request(req)
       end
 
@@ -75,7 +75,7 @@ module Unifi
     private
 
     def http(uri, req = nil, raw: false)
-      resp = Net::HTTP.start(uri.host, uri.port, use_ssl: true, verify_mode: OpenSSL::SSL::VERIFY_NONE) do |http|
+      resp = Net::HTTP.start(uri.host, uri.port, http_start_opts) do |http|
         if block_given?
           yield
         else
@@ -116,6 +116,16 @@ module Unifi
       path = "/#{path}" unless path[0] == "/"
       path = path.gsub(":domain", @domain)
       path
+    end
+
+    def http_start_opts
+      {
+        use_ssl: true,
+        verify_mode: OpenSSL::SSL::VERIFY_NONE,
+        read_timeout: 20,
+        connect_timeout: 10,
+        ssl_timeout: 10
+      }
     end
   end
 end
